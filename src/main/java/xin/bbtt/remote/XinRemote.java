@@ -17,18 +17,24 @@
 
 package xin.bbtt.remote;
 
+import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.server.RoutingHandler;
+import io.undertow.server.handlers.PathHandler;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xin.bbtt.mcbot.plugin.Plugin;
+import xin.bbtt.remote.JLine.RemoteCLI;
+import xin.bbtt.remote.JLine.RemoteConsoleAppender;
 import xin.bbtt.remote.config.Config;
 import xin.bbtt.remote.endPoints.Index;
 import xin.bbtt.remote.endPoints.Status;
 import xin.bbtt.remote.endPoints.config.Account;
 import xin.bbtt.remote.middleware.AuthMiddleware;
+import xin.bbtt.remote.websocket.WsTermCallback;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +42,7 @@ import java.io.IOException;
 @Getter
 public class XinRemote implements Plugin {
     private Undertow server;
+    @Getter
     private static final Logger log = LoggerFactory.getLogger(XinRemote.class);
     @Getter
     private Config config;
@@ -76,14 +83,29 @@ public class XinRemote implements Plugin {
             }
         }
 
+        RemoteCLI.init();
+
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+
+        RemoteConsoleAppender appender = new RemoteConsoleAppender();
+
+        appender.setContext(context);
+        appender.start();
+        ch.qos.logback.classic.Logger rootLogger = context.getLogger("ROOT");
+        rootLogger.addAppender(appender);
+
         RoutingHandler routes = new RoutingHandler();
         routes.get("/", new Index());
         routes.get("/status", new AuthMiddleware(new Status()));
         routes.get("/config/account", new AuthMiddleware(new Account()));
         routes.get("/config", new AuthMiddleware(new xin.bbtt.remote.endPoints.Config()));
+        PathHandler root = Handlers.path()
+                .addPrefixPath("/", routes)
+                .addPrefixPath("/term", Handlers.websocket(new WsTermCallback()));
+
         server = Undertow.builder()
                 .addHttpListener(config.getPort(), config.getHost())
-                .setHandler(routes)
+                .setHandler(root)
                 .build();
         server.start();
         //noinspection HttpUrlsUsage
