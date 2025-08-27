@@ -42,10 +42,10 @@ public class WsTermCallback implements WebSocketConnectionCallback {
                 session.feed(msg.getData().getBytes(StandardCharsets.UTF_8));
             }
             @Override protected void onClose(WebSocketChannel webSocketChannel, StreamSourceFrameChannel frameChannel) {
-                session.close();
+                WsTermSession.close(channel);
             }
         });
-        channel.addCloseTask(c -> session.close());
+        channel.addCloseTask(WsTermSession::close);
         channel.resumeReceives();
         session.start();
     }

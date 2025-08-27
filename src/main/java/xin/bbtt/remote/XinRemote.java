@@ -90,6 +90,15 @@ public class XinRemote implements Plugin {
         RemoteConsoleAppender appender = new RemoteConsoleAppender();
 
         appender.setContext(context);
+
+        ch.qos.logback.classic.encoder.PatternLayoutEncoder ple = new ch.qos.logback.classic.encoder.PatternLayoutEncoder();
+        ple.setContext(context);
+        ple.setPattern("[%d{HH:mm:ss} %highlight(%5level)] [%cyan(%logger)]%marker: %msg%n");
+        ple.setCharset(java.nio.charset.StandardCharsets.UTF_8);
+        ple.start();
+
+        appender.setEncoder(ple);
+
         appender.start();
         ch.qos.logback.classic.Logger rootLogger = context.getLogger("ROOT");
         rootLogger.addAppender(appender);

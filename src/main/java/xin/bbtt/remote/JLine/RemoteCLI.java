@@ -21,6 +21,7 @@ import lombok.Getter;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.impl.DefaultParser;
+import org.jline.terminal.Size;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import xin.bbtt.mcbot.JLine.JLineCommandCompleter;
@@ -35,9 +36,9 @@ public class RemoteCLI{
 
         Terminal terminal = TerminalBuilder.builder()
                 .system(false)
-                .type("xterm-256color")
                 .streams(WsTermSession.getIn(), WsTermSession.getOut())
-                .jna(false)
+                .type("xterm-256color")
+                .size(new Size(24, 80))
                 .build();
 
         remoteLineReader = LineReaderBuilder.builder()
@@ -45,6 +46,8 @@ public class RemoteCLI{
                 .completer(new JLineCommandCompleter())
                 .parser(new DefaultParser())
                 .build();
+
+        RemoteConsoleAppender.setRemoteLineReader(remoteLineReader);
 
         } catch (Exception e) {
             System.err.println("Failed to initialize remote terminal: " + e.getMessage());
