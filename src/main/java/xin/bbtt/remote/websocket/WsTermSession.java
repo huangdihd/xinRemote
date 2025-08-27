@@ -52,23 +52,47 @@ public class WsTermSession {
     @Getter
     private static final InputStream in = new InputStream() {
         private ByteArrayInputStream current;
-        @Override public int read() {
-            for (;;) {
-                if (current != null) {
-                    int b = current.read();
-                    System.out.println("read: " + b);
-                    if (b != -1) return b;
-                    current = null;
-                }
-                try {
-                    byte[] next = running ? inQ.take() : null;
-                    if (next == null) return -1;
-                    current = new ByteArrayInputStream(next);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return -1;
-                }
+
+        private void ensureCurrent() throws InterruptedException {
+            while (current == null) {
+                byte[] next = running ? inQ.take() : null;
+                if (next == null) break;
+                current = new ByteArrayInputStream(next);
             }
+        }
+
+        @Override
+        public int read() {
+            for (;;) {
+                if (!running) return -1;
+                try { ensureCurrent(); } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); return -1;
+                }
+                if (current == null) return -1;
+                int b = current.read();
+                if (b != -1) return b;
+                current = null;
+            }
+        }
+
+        @Override
+        public int read(byte @NotNull [] b, int off, int len) {
+            for (;;) {
+                if (!running) return -1;
+                try { ensureCurrent(); } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt(); return -1;
+                }
+                if (current == null) return -1;
+                int n = current.read(b, off, len);
+                if (n > 0) return n;
+                if (n == 0) continue;
+                current = null;
+            }
+        }
+
+        @Override
+        public int available() {
+            return current != null ? current.available() : 0;
         }
     };
 
@@ -126,16 +150,13 @@ public class WsTermSession {
 
     private static int getCut(int len, byte[] b) {
         int cut = len;
-        // 统计末尾连续的续字节(10xxxxxx)
         int i = len - 1, cont = 0;
         while (i >= 0 && (b[i] & 0xC0) == 0x80) { cont++; i--; }
         if (i >= 0) {
             int lead = b[i] & 0xFF;
             int need = (lead >= 0xF0) ? 3 : (lead >= 0xE0) ? 2 : (lead >= 0xC0) ? 1 : 0;
-            // 如果续字节不够，连同这个起始字节一起留到下次
             if (cont < need) cut = i;
         } else {
-            // 整个缓冲全是续字节（极端情况），这批先不发
             cut = 0;
         }
         return cut;
