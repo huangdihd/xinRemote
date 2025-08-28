@@ -23,7 +23,7 @@
 
     <groupId>xin.bbtt</groupId>
     <artifactId>XinRemote</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0-RELEASE</version>
 
     <repositories>
         <repository>
