@@ -32,7 +32,7 @@ public class Status implements HttpHandler {
         ObjectMapper mapper = new ObjectMapper();
         String json = mapper.writeValueAsString(new StatusResponse(
                 Xinbot.version,
-                Bot.Instance.getConfig().getAccount().getName(),
+                Bot.Instance.getConfig().getConfigData().getAccount().getName(),
                 (Bot.Instance.getServer() != null
                         ? Bot.Instance.getServer().toString() : "Connecting..."
                 )

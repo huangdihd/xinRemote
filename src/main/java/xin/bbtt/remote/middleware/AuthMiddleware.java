@@ -23,17 +23,12 @@ import io.undertow.util.HeaderValues;
 import io.undertow.util.StatusCodes;
 import xin.bbtt.remote.XinRemote;
 
-public class AuthMiddleware implements HttpHandler {
-    private final HttpHandler next;
-
-    public AuthMiddleware(HttpHandler next) {
-        this.next = next;
-    }
+public record AuthMiddleware(HttpHandler next) implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange httpServerExchange) throws Exception {
         HeaderValues authHeader = httpServerExchange.getRequestHeaders().get("Authorization");
         httpServerExchange.setStatusCode(StatusCodes.UNAUTHORIZED);
-        if  (authHeader == null) {
+        if (authHeader == null) {
             httpServerExchange.getResponseSender().send("Unauthorized");
             return;
         }

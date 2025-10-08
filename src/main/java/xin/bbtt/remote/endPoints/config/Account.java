@@ -28,7 +28,7 @@ public class Account implements HttpHandler {
     public void handleRequest(HttpServerExchange httpServerExchange) throws Exception {
         httpServerExchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
         ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(Bot.Instance.getConfig().getAccount());
+        String json = mapper.writeValueAsString(Bot.Instance.getConfig().getConfigData().getAccount());
         httpServerExchange.getResponseSender().send(json);
     }
 }
