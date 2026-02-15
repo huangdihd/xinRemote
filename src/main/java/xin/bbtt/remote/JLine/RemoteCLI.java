@@ -25,6 +25,7 @@ import org.jline.terminal.Size;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import xin.bbtt.mcbot.jLine.JLineCommandCompleter;
+import xin.bbtt.mcbot.jLine.JLineHighlighter;
 import xin.bbtt.remote.websocket.WsTermSession;
 
 public class RemoteCLI{
@@ -43,8 +44,10 @@ public class RemoteCLI{
 
         remoteLineReader = LineReaderBuilder.builder()
                 .terminal(terminal)
+                .option(LineReader.Option.COMPLETE_IN_WORD, true)
                 .option(LineReader.Option.CASE_INSENSITIVE, true)
                 .completer(new JLineCommandCompleter())
+                .highlighter(new JLineHighlighter())
                 .parser(new DefaultParser())
                 .build();
 
