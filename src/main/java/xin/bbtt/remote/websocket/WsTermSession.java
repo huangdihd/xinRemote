@@ -49,6 +49,14 @@ public class WsTermSession {
             running = false;
     }
 
+    public static InputStream getIn() {
+        return in;
+    }
+
+    public static OutputStream getOut() {
+        return out;
+    }
+
     @Getter
     private static final InputStream in = new InputStream() {
         private ByteArrayInputStream current;
@@ -181,13 +189,13 @@ public class WsTermSession {
                     input = RemoteCLI.getRemoteLineReader().readLine("> ");
                 }
                 catch (UserInterruptException | EndOfFileException e) {
-                    Bot.Instance.stop();
+                    Bot.INSTANCE.stop();
                 }
                 catch (Exception e) {
                     XinRemote.getLog().error(e.getMessage(), e);
                 }
                 if (input == null || input.isEmpty()) continue;
-                Bot.Instance.getPluginManager().commands().callCommand(input);
+                Bot.INSTANCE.getPluginManager().commands().callCommand(input);
             }
         }
         catch (Exception e) {

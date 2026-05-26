@@ -1,0 +1,4 @@
+name: XinRemote
+version: 1.3.0-RELEASE
+main: xin.bbtt.remote.XinRemote
+description: "XinRemote for Xinbot v2"

@@ -28,7 +28,7 @@ public class Players implements HttpHandler {
     public void handleRequest(HttpServerExchange httpServerExchange) throws Exception {
         httpServerExchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
         ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(Bot.Instance.players.values());
+        String json = mapper.writeValueAsString(Bot.INSTANCE.players.values());
         httpServerExchange.getResponseSender().send(json);
     }
 }
