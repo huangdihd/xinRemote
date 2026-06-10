@@ -89,6 +89,19 @@ public class WsWorldSession {
     private static ScheduledExecutorService ticker;
     private static SessionAdapter worldPacketListener;
 
+    // Last world dimensions broadcast to viewers; used to detect dimension /
+    // server changes (e.g. lobby minY=0 -> game minY=-64) and re-broadcast.
+    private static int lastMinY = Integer.MIN_VALUE;
+    private static int lastMaxY = Integer.MIN_VALUE;
+
+    // The item currently held on the cursor (server slot -1,-1), so the inventory
+    // viewer can show it and container clicks can predict the carried stack.
+    private static volatile org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack cursorItem;
+
+    public static org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack getCursorItem() {
+        return cursorItem;
+    }
+
     // ------------------------------------------------------------------
     //  per-connection lifecycle
     // ------------------------------------------------------------------
@@ -119,10 +132,13 @@ public class WsWorldSession {
         }
 
         // send world dimensions so the viewer can configure chunk meshing
+        int minY = RegistryDataListener.getMinWorldY();
+        int maxY = RegistryDataListener.getMaxWorldY();
+        lastMinY = minY;
+        lastMaxY = maxY;
         WebSockets.sendText(String.format(java.util.Locale.US,
                 "{\"type\":\"world_info\",\"minY\":%d,\"maxY\":%d}",
-                RegistryDataListener.getMinWorldY(),
-                RegistryDataListener.getMaxWorldY()),
+                minY, maxY),
                 channel, null);
 
         // push all currently loaded chunks + entities to the new viewer
@@ -154,6 +170,10 @@ public class WsWorldSession {
         @Override
         public void packetReceived(Session session, Packet packet) {
             if (packet instanceof ClientboundLevelChunkWithLightPacket p) {
+                // Chunks arrive after the login/respawn sequence, so world
+                // dimensions are up to date here — re-announce them if the bot
+                // switched dimension/server before streaming the chunk.
+                maybeBroadcastWorldInfo();
                 processAndBroadcastChunk(p);
                 return;
             }
@@ -225,8 +245,24 @@ public class WsWorldSession {
                 return;
             }
             // ---- inventory packets ----
+            // Track the cursor (carried) item. 1.21.2+ uses SetCursorItem;
+            // older protocols sent it as ContainerSetSlot(containerId=-1, slot=-1).
+            if (packet instanceof ClientboundSetCursorItemPacket cp) {
+                cursorItem = cp.getContents();
+            } else if (packet instanceof ClientboundContainerSetSlotPacket sp
+                    && sp.getContainerId() == -1 && sp.getSlot() == -1) {
+                cursorItem = sp.getItem();
+            }
+            // 1.21.2+ updates individual player-inventory slots via this packet
+            // (slot numbering matches the window-0 container), so mirror it into
+            // the inventory map to keep /inventory fresh after clicks.
+            if (packet instanceof ClientboundSetPlayerInventoryPacket pi) {
+                MovementSync.INSTANCE.getInventoryManager().setSlot(0, pi.getSlot(), pi.getContents());
+            }
             if (packet instanceof ClientboundContainerSetContentPacket
                     || packet instanceof ClientboundContainerSetSlotPacket
+                    || packet instanceof ClientboundSetCursorItemPacket
+                    || packet instanceof ClientboundSetPlayerInventoryPacket
                     || packet instanceof ClientboundSetHeldSlotPacket
                     || packet instanceof ClientboundOpenScreenPacket
                     || packet instanceof ClientboundContainerClosePacket) {
@@ -336,6 +372,21 @@ public class WsWorldSession {
                 entityId,
                 e.getPosition().x, e.getPosition().y, e.getPosition().z,
                 e.getYaw(), e.getPitch()));
+    }
+
+    /**
+     * Re-broadcast world dimensions to all viewers if they changed since the
+     * last announcement (bot switched dimension or server). Viewers reset and
+     * rebuild their world when minY/maxY change.
+     */
+    private static void maybeBroadcastWorldInfo() {
+        int minY = RegistryDataListener.getMinWorldY();
+        int maxY = RegistryDataListener.getMaxWorldY();
+        if (minY == lastMinY && maxY == lastMaxY) return;
+        lastMinY = minY;
+        lastMaxY = maxY;
+        broadcast(String.format(java.util.Locale.US,
+                "{\"type\":\"world_info\",\"minY\":%d,\"maxY\":%d}", minY, maxY));
     }
 
     // ------------------------------------------------------------------

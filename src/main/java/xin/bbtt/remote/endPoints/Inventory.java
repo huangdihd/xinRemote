@@ -31,10 +31,19 @@ import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponen
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.ItemEnchantments;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerActionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundSetCarriedItemPacket;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ClickItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerAction;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerActionType;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ShiftClickItemAction;
+import org.geysermc.mcprotocollib.protocol.data.game.item.HashedStack;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import xin.bbtt.MovementSync;
 import xin.bbtt.inventory.EnchantmentRegistry;
 import xin.bbtt.inventory.ItemRegistry;
 import xin.bbtt.mcbot.Bot;
+import xin.bbtt.mcbot.Utils;
 import xin.bbtt.remote.websocket.WsWorldSession;
 
 import java.nio.charset.StandardCharsets;
@@ -95,6 +104,8 @@ public class Inventory implements HttpHandler {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("items", slotList);
             result.put("heldSlot", heldSlot);
+            ItemStack cursor = WsWorldSession.getCursorItem();
+            result.put("cursor", (cursor == null || cursor.getId() == 0) ? null : serializeItem(cursor, -1));
             exchange.getResponseSender().send(mapper.writeValueAsString(result));
         } catch (Exception e) {
             exchange.setStatusCode(500);
@@ -160,6 +171,10 @@ public class Inventory implements HttpHandler {
 
             if ("/inventory/heldSlot".equals(path)) {
                 handleHeldSlot(data);
+            } else if ("/inventory/click".equals(path)) {
+                handleClick(data);
+            } else if ("/inventory/dropCursor".equals(path)) {
+                handleDropCursor(data);
             } else if ("/inventory/drop".equals(path)) {
                 handleDrop(data);
             } else if ("/inventory/swapHands".equals(path)) {
@@ -186,6 +201,46 @@ public class Inventory implements HttpHandler {
 
         Bot.INSTANCE.getSession().send(new ServerboundSetCarriedItemPacket(slot));
         MovementSync.INSTANCE.getInventoryManager().setHeldSlot(slot);
+    }
+
+    /**
+     * Real container click on the player inventory (window 0). The slot index is
+     * the raw container slot (0=craft out, 5-8 armor, 9-35 main, 36-44 hotbar,
+     * 45 offhand). We send the click with the current stateId and let the server
+     * reconcile the result (it resyncs via SetContent/SetSlot), so pickup, place
+     * and split all work without client-side prediction.
+     */
+    private void handleClick(Map<String, Object> data) {
+        int slot = ((Number) data.get("slot")).intValue();
+        int button = data.get("button") != null ? ((Number) data.get("button")).intValue() : 0;
+        String mode = data.get("mode") != null ? data.get("mode").toString() : "pickup";
+
+        ContainerActionType action;
+        ContainerAction param;
+        if ("quick".equals(mode)) {
+            action = ContainerActionType.SHIFT_CLICK_ITEM;
+            param = button == 1 ? ShiftClickItemAction.RIGHT_CLICK : ShiftClickItemAction.LEFT_CLICK;
+        } else {
+            action = ContainerActionType.CLICK_ITEM;
+            param = button == 1 ? ClickItemAction.RIGHT_CLICK : ClickItemAction.LEFT_CLICK;
+        }
+        sendClick(0, slot, action, param);
+    }
+
+    /** Drop the cursor stack by "clicking outside" (slot -999). */
+    private void handleDropCursor(Map<String, Object> data) {
+        int button = data.get("button") != null ? ((Number) data.get("button")).intValue() : 0;
+        sendClick(0, ServerboundContainerClickPacket.CLICK_OUTSIDE_NOT_HOLDING_SLOT,
+                ContainerActionType.CLICK_ITEM,
+                button == 1 ? ClickItemAction.RIGHT_CLICK : ClickItemAction.LEFT_CLICK);
+    }
+
+    private void sendClick(int containerId, int slot, ContainerActionType action, ContainerAction param) {
+        int stateId = MovementSync.INSTANCE.getInventoryManager().getCurrentStateId();
+        HashedStack carried = Utils.itemStackToHashedStack(WsWorldSession.getCursorItem());
+        Int2ObjectMap<HashedStack> changedSlots = new Int2ObjectOpenHashMap<>();
+        Bot.INSTANCE.getSession().send(new ServerboundContainerClickPacket(
+                containerId, stateId, slot, action, param, carried, changedSlots));
     }
 
     private void handleDrop(Map<String, Object> data) {

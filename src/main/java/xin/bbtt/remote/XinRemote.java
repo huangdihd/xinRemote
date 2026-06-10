@@ -136,6 +136,8 @@ public class XinRemote implements Plugin {
         routes.get("/inventory", new AuthMiddleware(new Inventory()));
         routes.get("/inventory/open", new AuthMiddleware(new Inventory()));
         routes.post("/inventory/heldSlot", new AuthMiddleware(new Inventory()));
+        routes.post("/inventory/click", new AuthMiddleware(new Inventory()));
+        routes.post("/inventory/dropCursor", new AuthMiddleware(new Inventory()));
         routes.post("/inventory/drop", new AuthMiddleware(new Inventory()));
         routes.post("/inventory/swapHands", new AuthMiddleware(new Inventory()));
         PathHandler root = Handlers.path()
