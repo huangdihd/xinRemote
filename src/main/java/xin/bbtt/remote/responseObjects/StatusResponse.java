@@ -17,5 +17,5 @@
 
 package xin.bbtt.remote.responseObjects;
 
-public record StatusResponse(String version, String username, String server) {
+public record StatusResponse(String version, String username, String server, boolean worldViewerAvailable) {
 }

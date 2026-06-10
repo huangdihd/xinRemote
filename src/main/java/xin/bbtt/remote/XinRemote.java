@@ -35,11 +35,13 @@ import xin.bbtt.remote.JLine.RemoteCLI;
 import xin.bbtt.remote.JLine.RemoteConsoleAppender;
 import xin.bbtt.remote.config.Config;
 import xin.bbtt.remote.endPoints.Index;
+import xin.bbtt.remote.endPoints.Inventory;
 import xin.bbtt.remote.endPoints.Players;
 import xin.bbtt.remote.endPoints.Status;
 import xin.bbtt.remote.endPoints.config.Account;
 import xin.bbtt.remote.middleware.AuthMiddleware;
 import xin.bbtt.remote.websocket.WsTermCallback;
+import xin.bbtt.remote.websocket.WsWorldCallback;
 
 import java.io.File;
 import java.io.IOException;
@@ -131,9 +133,15 @@ public class XinRemote implements Plugin {
         routes.get("/config/account", new AuthMiddleware(new Account()));
         routes.get("/config", new AuthMiddleware(new xin.bbtt.remote.endPoints.Config()));
         routes.get("/players", new AuthMiddleware(new Players()));
+        routes.get("/inventory", new AuthMiddleware(new Inventory()));
+        routes.get("/inventory/open", new AuthMiddleware(new Inventory()));
+        routes.post("/inventory/heldSlot", new AuthMiddleware(new Inventory()));
+        routes.post("/inventory/drop", new AuthMiddleware(new Inventory()));
+        routes.post("/inventory/swapHands", new AuthMiddleware(new Inventory()));
         PathHandler root = Handlers.path()
                 .addPrefixPath("/", routes)
-                .addPrefixPath("/term", Handlers.websocket(new WsTermCallback()));
+                .addPrefixPath("/term", Handlers.websocket(new WsTermCallback()))
+                .addPrefixPath("/world", Handlers.websocket(new WsWorldCallback()));
 
         server = Undertow.builder()
                 .addHttpListener(config.getPort(), config.getHost())
