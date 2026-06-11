@@ -24,6 +24,7 @@ import io.undertow.util.Headers;
 import xin.bbtt.mcbot.Bot;
 import xin.bbtt.mcbot.Xinbot;
 import xin.bbtt.remote.responseObjects.StatusResponse;
+import xin.bbtt.remote.websocket.WsWorldSession;
 
 public class Status implements HttpHandler {
     @Override
@@ -35,7 +36,8 @@ public class Status implements HttpHandler {
                 Bot.INSTANCE.getConfig().getConfigData().getAccount().getName(),
                 (Bot.INSTANCE.getServer() != null
                         ? Bot.INSTANCE.getServer().toString() : "Connecting..."
-                )
+                ),
+                WsWorldSession.isMovementSyncAvailable()
         )
         );
         httpServerExchange.getResponseSender().send(json);

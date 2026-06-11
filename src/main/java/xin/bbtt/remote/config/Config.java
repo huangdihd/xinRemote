@@ -24,4 +24,6 @@ public class Config {
     String host;
     int port;
     String token;
+    /** 终端历史日志缓冲区大小（KB），新连接时回放给客户端。 */
+    int historyBufferKb = 512;
 }
