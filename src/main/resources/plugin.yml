@@ -1,5 +1,5 @@
 name: XinRemote
-version: 1.4.0-SNAPSHOT
+version: 1.4.0-RELEASE
 main: xin.bbtt.remote.XinRemote
 softdepend: [MovementSync]
 description: "XinRemote for Xinbot v2"

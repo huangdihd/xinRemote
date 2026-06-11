@@ -22,18 +22,29 @@ import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
+import xin.bbtt.remote.JLine.TermHistory;
 import xin.bbtt.remote.XinRemote;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class WsTermCallback implements WebSocketConnectionCallback {
+
     @Override
     public void onConnect(WebSocketHttpExchange exchange, WebSocketChannel channel) {
         String token = exchange.getRequestParameters().getOrDefault("token", List.of("")).get(0);
         if (!token.equals(XinRemote.getInstance().getConfig().getToken())) {
             exchange.close(); return;
+        }
+
+        // Replay buffered history to this client only, before it joins the
+        // live broadcast list. xterm.js needs CRLF line endings.
+        String history = TermHistory.snapshot();
+        if (!history.isEmpty()) {
+            String replay = history.replace("\r\n", "\n").replace("\n", "\r\n");
+            WebSockets.sendText(replay, channel, null);
         }
 
         WsTermSession session = new WsTermSession(channel);

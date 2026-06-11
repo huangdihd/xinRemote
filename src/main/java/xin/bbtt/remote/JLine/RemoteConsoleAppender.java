@@ -39,6 +39,10 @@ public class RemoteConsoleAppender extends ConsoleAppender<ILoggingEvent> {
         byte[] bytes = getEncoder().encode(event);
         String logStr = new String(bytes, charset);
 
+        // Always record into the history buffer, even when no terminal client
+        // is attached, so new sessions can replay what they missed.
+        TermHistory.append(logStr);
+
         if (remoteLineReader != null) {
             remoteLineReader.printAbove(logStr);
         }

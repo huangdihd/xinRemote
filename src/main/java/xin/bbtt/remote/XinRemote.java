@@ -107,6 +107,8 @@ public class XinRemote implements Plugin {
             }
         }
 
+        xin.bbtt.remote.JLine.TermHistory.setCapBytes(config.getHistoryBufferKb() * 1024);
+
         RemoteCLI.init();
 
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
